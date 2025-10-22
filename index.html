@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confidence Dashboard - Interview Preparation Tracker</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Lucide icons as SVG components
+        const ChevronDown = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        );
+
+        const ChevronUp = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+        );
+
+        const Star = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        );
+
+        const Download = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        );
+
+        const Upload = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        );
+
+        function ConfidenceDashboard() {
+            const [expandedBullets, setExpandedBullets] = useState({});
+            const [bulletNotes, setBulletNotes] = useState({});
+            const [confidence, setConfidence] = useState({});
+            const [checklist, setChecklist] = useState({});
+
+            const toggleBullet = (id) => {
+                setExpandedBullets(prev => ({ ...prev, [id]: !prev[id] }));
+            };
+
+            const updateNotes = (bulletId, field, value) => {
+                setBulletNotes(prev => ({
+                    ...prev,
+                    [bulletId]: { ...prev[bulletId], [field]: value }
+                }));
+            };
+
+            const updateConfidence = (bulletId, value) => {
+                setConfidence(prev => ({ ...prev, [bulletId]: value }));
+            };
+
+            const toggleCheckItem = (bulletId, item) => {
+                setChecklist(prev => ({
+                    ...prev,
+                    [`${bulletId}-${item}`]: !prev[`${bulletId}-${item}`]
+                }));
+            };
+
+            // Export functionality
+            const exportData = () => {
+                const data = {
+                    bulletNotes,
+                    confidence,
+                    checklist,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `confidence-dashboard-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            // Export as text
+            const exportAsText = () => {
+                let text = '# CONFIDENCE DASHBOARD EXPORT\n';
+                text += `Export Date: ${new Date().toLocaleString()}\n`;
+                text += `Overall Readiness: ${calculateOverallReadiness()}%\n\n`;
+                text += '═══════════════════════════════════════════════════\n\n';
+
+                bullets.forEach((bullet) => {
+                    text += `## ${bullet.title}\n`;
+                    text += `Bullet: ${bullet.text}\n\n`;
+                    text += `Confidence Level: ${confidence[bullet.id] || 'Not set'}\n\n`;
+                    
+                    const notes = bulletNotes[bullet.id] || {};
+                    
+                    if (notes.notes) {
+                        text += `📝 Notes & Clarifications:\n${notes.notes}\n\n`;
+                    }
+                    if (notes.context) {
+                        text += `💡 Key Context/Background:\n${notes.context}\n\n`;
+                    }
+                    if (notes.role) {
+                        text += `🎯 Your Specific Role:\n${notes.role}\n\n`;
+                    }
+                    if (notes.metrics) {
+                        text += `📊 Metrics Details:\n${notes.metrics}\n\n`;
+                    }
+                    if (notes.concerns) {
+                        text += `⚠️ Concerns/Red Flags:\n${notes.concerns}\n\n`;
+                    }
+                    if (notes.story) {
+                        text += `📖 Your Story:\n${notes.story}\n\n`;
+                    }
+
+                    text += 'Checklist Progress:\n';
+                    bullet.checkItems.forEach((item, i) => {
+                        const checked = checklist[`${bullet.id}-${i}`] ? '✅' : '☐';
+                        text += `${checked} ${item}\n`;
+                    });
+                    
+                    text += '\n═══════════════════════════════════════════════════\n\n';
+                });
+
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `confidence-dashboard-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            // Import functionality
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        setBulletNotes(data.bulletNotes || {});
+                        setConfidence(data.confidence || {});
+                        setChecklist(data.checklist || {});
+                        alert('✅ Data imported successfully!');
+                    } catch (error) {
+                        alert('❌ Error importing data. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const bullets = [
+                {
+                    id: 'b1',
+                    title: 'Walmart/GTM Leadership',
+                    text: 'Led go-to-market strategy and enterprise adoption for Walmart, NYC DOE, and 6 clients through SSO and API integrations, generating $1.5M revenue with 99% client retention and $200K product expansion.',
+                    jobMatch: '42/50 (84%)',
+                    wowFactor: 5,
+                    prepNeeded: 'Medium (2 hours)',
+                    riskLevel: 'Medium',
+                    questions: [
+                        'Tell me about landing Walmart as a customer.',
+                        'How did you achieve 99% retention?',
+                        'Walk me through the SSO integration.',
+                        'What was your role vs Sales team\'s role?',
+                        'How did you drive $200K in product expansion?'
+                    ],
+                    checkItems: [
+                        'Can tell Walmart story in 2 minutes',
+                        'Know how $1.5M was calculated',
+                        'Understand SSO at technical level',
+                        'Clear on Sales vs your role',
+                        'Can explain 99% retention (why not 100%)'
+                    ]
+                },
+                {
+                    id: 'b2',
+                    title: 'AI Agent Launch',
+                    text: 'Launched AI agent using AWS Bedrock LLMs and RAG architecture for 3,000 users across 15 enterprise clients, reducing support resolution time from 10 minutes to 2 minutes and improving customer satisfaction from 3.8 to 4.5 stars.',
+                    jobMatch: '48/50 (96%)',
+                    wowFactor: 5,
+                    prepNeeded: 'HIGH (4 hours)',
+                    riskLevel: 'High',
+                    questions: [
+                        'Walk me through building this AI agent.',
+                        'Explain RAG architecture to me.',
+                        'Why did you choose AWS Bedrock?',
+                        'How did you measure the 10→2 minute improvement?',
+                        'What were the biggest challenges?',
+                        'How do you handle wrong AI answers?'
+                    ],
+                    checkItems: [
+                        'Can explain RAG architecture simply',
+                        'Know why AWS Bedrock vs alternatives',
+                        'Can describe measurement methodology',
+                        'Clear on what "3,000 users" means',
+                        'Have prepared 3-min story',
+                        'Understand prompt engineering process'
+                    ]
+                },
+                {
+                    id: 'b3',
+                    title: 'Analytics Platform',
+                    text: 'Built analytics platform in PowerBI and SQL for sales forecasting, working with engineering to replace third-party integration and deliver $300K annual savings with 40% forecast improvement.',
+                    jobMatch: '35/50 (70%)',
+                    wowFactor: 3,
+                    prepNeeded: 'Medium (1 hour)',
+                    riskLevel: 'Medium',
+                    questions: [
+                        'Walk me through building this analytics platform.',
+                        'How did you calculate $300K in savings?',
+                        'What does "40% forecast improvement" mean?',
+                        'Why build vs buy?'
+                    ],
+                    checkItems: [
+                        'Clear on your role (build vs requirements)',
+                        'Can show $300K calculation',
+                        'Know baseline vs improved forecast accuracy',
+                        'Can explain PowerBI choice'
+                    ]
+                },
+                {
+                    id: 'b4',
+                    title: 'Data Analysis & Research',
+                    text: 'Analyzed 360K support tickets in PowerBI and conducted user research with 270+ stakeholders, identifying that 65% were repetitive queries consuming 70% of agent capacity, leading to 80% automation rate.',
+                    jobMatch: '44/50 (88%)',
+                    wowFactor: 4,
+                    prepNeeded: 'Medium (2 hours)',
+                    riskLevel: 'Medium',
+                    questions: [
+                        'How did you analyze 360K tickets?',
+                        'How did you conduct research with 270+ stakeholders?',
+                        'What made a query "repetitive"?',
+                        'How did this lead to 80% automation?'
+                    ],
+                    checkItems: [
+                        'Know exact analysis methodology',
+                        'Can explain stakeholder research format',
+                        'Clear on "65% repetitive" definition',
+                        'Can connect insight to automation outcome'
+                    ]
+                },
+                {
+                    id: 'b9',
+                    title: 'Ola Payment Platform',
+                    text: 'Led $150K payment platform modernization for Ola ride-booking app serving millions of users, analyzing Mixpanel data to improve transaction success rate from 65% to 95%.',
+                    jobMatch: '40/50 (80%)',
+                    wowFactor: 4,
+                    prepNeeded: 'Medium (1 hour)',
+                    riskLevel: 'Medium',
+                    questions: [
+                        'What was causing the 65% failure rate?',
+                        'How did you identify root causes?',
+                        'What changes did you implement?',
+                        'How did you measure success?'
+                    ],
+                    checkItems: [
+                        'Can explain what was broken',
+                        'Know analysis approach used',
+                        'Have 2-3 specific improvements ready',
+                        'Clear on measurement methodology'
+                    ]
+                }
+            ];
+
+            const calculateOverallReadiness = () => {
+                const totalChecks = bullets.reduce((sum, bullet) => sum + bullet.checkItems.length, 0);
+                const completedChecks = Object.values(checklist).filter(v => v).length;
+                const confidentBullets = Object.values(confidence).filter(v => v === 'high').length;
+                
+                const checkProgress = (completedChecks / totalChecks) * 100;
+                const confidenceProgress = (confidentBullets / bullets.length) * 100;
+                
+                return Math.round((checkProgress + confidenceProgress) / 2);
+            };
+
+            const readiness = calculateOverallReadiness();
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+                    <div className="max-w-6xl mx-auto">
+                        {/* Header */}
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Confidence Dashboard</h1>
+                                    <p className="text-gray-600">Track your preparation and build interview confidence</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={exportData}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                                    >
+                                        <Download size={16} />
+                                        Export JSON
+                                    </button>
+                                    <button
+                                        onClick={exportAsText}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                    >
+                                        <Download size={16} />
+                                        Export Text
+                                    </button>
+                                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium cursor-pointer">
+                                        <Upload size={16} />
+                                        Import
+                                        <input
+                                            type="file"
+                                            accept=".json"
+                                            onChange={importData}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            {/* Overall Readiness */}
+                            <div className="mt-6">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-lg font-semibold text-gray-700">Overall Readiness</span>
+                                    <span className="text-2xl font-bold text-indigo-600">{readiness}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-4">
+                                    <div 
+                                        className={`h-4 rounded-full transition-all duration-500 ${
+                                            readiness >= 85 ? 'bg-green-500' : readiness >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                                        }`}
+                                        style={{ width: `${readiness}%` }}
+                                    />
+                                </div>
+                                <div className="mt-2 text-sm text-gray-600">
+                                    {readiness >= 85 ? '🟢 Ready to apply!' : readiness >= 70 ? '🟡 Almost there - 2 more days' : '🔴 Need 1 week of prep'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bullets */}
+                        {bullets.map((bullet) => (
+                            <div key={bullet.id} className="bg-white rounded-lg shadow-md mb-4 overflow-hidden">
+                                {/* Bullet Header */}
+                                <div 
+                                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                    onClick={() => toggleBullet(bullet.id)}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <h3 className="text-lg font-semibold text-gray-800">{bullet.title}</h3>
+                                                <div className="flex">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star 
+                                                            key={i} 
+                                                            size={16} 
+                                                            className={i < bullet.wowFactor ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-2 italic">{bullet.text}</p>
+                                            <div className="flex flex-wrap gap-4 text-xs">
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">📊 {bullet.jobMatch}</span>
+                                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">⏱️ {bullet.prepNeeded}</span>
+                                                <span className={`px-2 py-1 rounded ${
+                                                    bullet.riskLevel === 'High' ? 'bg-red-100 text-red-700' : 
+                                                    bullet.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 
+                                                    'bg-green-100 text-green-700'
+                                                }`}>
+                                                    ⚠️ Risk: {bullet.riskLevel}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button className="ml-4 text-gray-400 hover:text-gray-600">
+                                            {expandedBullets[bullet.id] ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Expanded Content */}
+                                {expandedBullets[bullet.id] && (
+                                    <div className="border-t border-gray-200 p-4 bg-gray-50">
+                                        {/* Confidence Level */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Your Confidence Level:
+                                            </label>
+                                            <div className="flex gap-2">
+                                                {['low', 'medium', 'high'].map((level) => (
+                                                    <button
+                                                        key={level}
+                                                        onClick={() => updateConfidence(bullet.id, level)}
+                                                        className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                                                            confidence[bullet.id] === level
+                                                                ? level === 'high' ? 'bg-green-500 text-white' :
+                                                                  level === 'medium' ? 'bg-yellow-500 text-white' :
+                                                                  'bg-red-500 text-white'
+                                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                        }`}
+                                                    >
+                                                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Additional Comments Sections */}
+                                        <div className="mb-4 space-y-3">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    📝 Your Notes & Clarifications:
+                                                </label>
+                                                <textarea
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                    rows="3"
+                                                    placeholder="Add notes about this bullet point... What needs clarification? What story will you tell?"
+                                                    value={bulletNotes[bullet.id]?.notes || ''}
+                                                    onChange={(e) => updateNotes(bullet.id, 'notes', e.target.value)}
+                                                />
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    💡 Key Context/Background:
+                                                </label>
+                                                <textarea
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                    rows="2"
+                                                    placeholder="What's the backstory? What led to this accomplishment?"
+                                                    value={bulletNotes[bullet.id]?.context || ''}
+                                                    onChange={(e) => updateNotes(bullet.id, 'context', e.target.value)}
+                                                />
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    🎯 Your Specific Role:
+                                                </label>
+                                                <textarea
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                    rows="2"
+                                                    placeholder="What did YOU specifically do vs. your team? Be clear on boundaries."
+                                                    value={bulletNotes[bullet.id]?.role || ''}
+                                                    onChange={(e) => updateNotes(bullet.id, 'role', e.target.value)}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    📊 Metrics Details:
+                                                </label>
+                                                <textarea
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                    rows="2"
+                                                    placeholder="How were these numbers calculated? Can you show the math?"
+                                                    value={bulletNotes[bullet.id]?.metrics || ''}
+                                                    onChange={(e) => updateNotes(bullet.id, 'metrics', e.target.value)}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    ⚠️ Concerns/Red Flags:
+                                                </label>
+                                                <textarea
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                    rows="2"
+                                                    placeholder="What worries you about this bullet? What needs more preparation?"
+                                                    value={bulletNotes[bullet.id]?.concerns || ''}
+                                                    onChange={(e) => updateNotes(bullet.id, 'concerns', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Expected Questions */}
+                                        <div className="mb-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">🎤 Expected Interview Questions:</h4>
+                                            <ul className="space-y-2">
+                                                {bullet.questions.map((q, i) => (
+                                                    <li key={i} className="text-sm text-gray-600 flex items-start">
+                                                        <span className="text-indigo-600 mr-2 font-semibold">{i + 1}.</span>
+                                                        <span>{q}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+
+                                        {/* Story Draft */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                📖 Your 2-Minute Story (Practice Here):
+                                            </label>
+                                            <textarea
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                rows="5"
+                                                placeholder="Draft your story here... Setup → Action → Result → Learning"
+                                                value={bulletNotes[bullet.id]?.story || ''}
+                                                onChange={(e) => updateNotes(bullet.id, 'story', e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* Checklist */}
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">✅ Readiness Checklist:</h4>
+                                            <div className="space-y-2">
+                                                {bullet.checkItems.map((item, i) => (
+                                                    <label key={i} className="flex items-start cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checklist[`${bullet.id}-${i}`] || false}
+                                                            onChange={() => toggleCheckItem(bullet.id, i)}
+                                                            className="mt-1 mr-3 h-5 w-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{item}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+
+                        {/* Action Items */}
+                        <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">🚀 Next Steps</h2>
+                            <div className="space-y-3">
+                                <div className={`p-3 rounded ${readiness < 70 ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                                    <h3 className="font-semibold text-gray-800 mb-1">Priority 1: Core Stories</h3>
+                                    <p className="text-sm text-gray-600">Write out full stories for bullets #1, #2, #4, #9. Practice out loud 3+ times.</p>
+                                </div>
+                                <div className={`p-3 rounded ${readiness < 80 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
+                                    <h3 className="font-semibold text-gray-800 mb-1">Priority 2: Technical Knowledge</h3>
+                                    <p className="text-sm text-gray-600">Study RAG architecture, AWS Bedrock, SSO. Can explain each clearly.</p>
+                                </div>
+                                <div className={`p-3 rounded ${readiness < 85 ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
+                                    <h3 className="font-semibold text-gray-800 mb-1">Priority 3: Metrics Verification</h3>
+                                    <p className="text-sm text-gray-600">Verify every number. Write down calculations. Be ready to defend.</p>
+                                </div>
+                            </div>
+                            
+                            {readiness >= 85 && (
+                                <div className="mt-6 p-4 bg-green-50 border-2 border-green-500 rounded-lg">
+                                    <h3 className="font-bold text-green-800 text-lg mb-2">🎉 You're Ready!</h3>
+                                    <p className="text-green-700 mb-3">Start applying today. Your top targets:</p>
+                                    <ul className="text-sm text-green-700 space-y-1">
+                                        <li>• Anthropic - PM, API</li>
+                                        <li>• OpenAI - PM, Enterprise Identity</li>
+                                        <li>• Cohere - PM, Automation</li>
+                                        <li>• Adobe - Senior PM, AI Assistant</li>
+                                        <li>• Meta - Product Manager</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="text-center mt-8 text-sm text-gray-500">
+                            <p>💡 Tip: Aim for 85%+ readiness before applying to dream companies</p>
+                            <p className="mt-1">Target: All bullets at "High" confidence, all checklists completed</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ConfidenceDashboard />);
+    </script>
+</body>
+</html>
